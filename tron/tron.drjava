@@ -1,17 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <drjava version="drjava-20100913-r5387">
-  <project autorefresh="false" build="build/" main="TronClient" manifest="" root="" work="">
-    <createjar file="tron.jar" flags="13"/>
+  <project autorefresh="false" build="build/" main="TronClient" root="" work="">
+    <createjar file=""/>
     <source>
-      <file active="true" name="TronClient.java" package="" timestamp="26-Apr-2011 21:07:03">
-        <select from="538" to="538"/>
-        <scroll column="0" row="0"/>
+      <file active="true" name="src/TronClient.java" package="" timestamp="06-May-2011 19:48:54">
+        <select from="4255" to="4255"/>
+        <scroll column="2280" row="0"/>
       </file>
     </source>
     <included/>
     <excluded/>
     <collapsed/>
-    <classpath/>
+    <classpath>
+      <file absolute="false" name="media/"/>
+    </classpath>
     <breakpoints/>
     <watches/>
     <bookmarks/>
