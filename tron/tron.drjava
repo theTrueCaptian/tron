@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<drjava version="drjava-20100913-r5387">
+  <project autorefresh="false" build="build/" main="TronClient" manifest="" root="" work="">
+    <createjar file="tron.jar" flags="13"/>
+    <source>
+      <file active="true" name="TronClient.java" package="" timestamp="26-Apr-2011 21:07:03">
+        <select from="538" to="538"/>
+        <scroll column="0" row="0"/>
+      </file>
+    </source>
+    <included/>
+    <excluded/>
+    <collapsed/>
+    <classpath/>
+    <breakpoints/>
+    <watches/>
+    <bookmarks/>
+  </project>
+</drjava>
