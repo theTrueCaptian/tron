@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <drjava version="drjava-20100913-r5387">
-  <project autorefresh="false" build="build/" main="TronClient" root="" work="">
-    <createjar file=""/>
+  <project autorefresh="false" build="build/" main="TronClient" manifest="" root="" work="">
+    <createjar file="tron.jar" flags="5"/>
     <source>
-      <file active="true" name="src/TronClient.java" package="" timestamp="06-May-2011 19:48:54">
-        <select from="4255" to="4255"/>
-        <scroll column="2280" row="0"/>
+      <file active="true" name="src/TronClient.java" package="" timestamp="07-May-2011 00:49:06">
+        <select from="6663" to="6663"/>
+        <scroll column="3773" row="0"/>
       </file>
     </source>
     <included/>

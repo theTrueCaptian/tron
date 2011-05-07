@@ -58,24 +58,19 @@ class TronServer{
     private int player;
     private int game;
     private LinkedList<LinkedList<Point>> myPoints = new LinkedList<LinkedList<Point>>();
-    private boolean firstTime = true;
     
     public SocketThread(Socket rs, int c, int g)
     {
       myS = rs;
       player = c;
       game = g;
-      myPoints.add(new LinkedList<Point>());
-      myPoints.add(new LinkedList<Point>());
-      myPoints.add(new LinkedList<Point>());
-      myPoints.add(new LinkedList<Point>());
-                  
     }//constructor
     
     public void run(){      
       try{
         
-        
+        PrintWriter pw = new PrintWriter(myS.getOutputStream(), true);
+        pw.println((int)((connections)/game));
         
       }catch(Exception e){System.out.println("Error sending message to client");}
       
@@ -83,15 +78,8 @@ class TronServer{
         //read points from client and add them to there point list
         
         //check if there are 4 players in this game
-        if(connections == game*4){
+        if(connections > game*4){
         try{
-          
-          if(firstTime){
-          //send your player number only once
-          PrintWriter pw = new PrintWriter(myS.getOutputStream(), true);
-          pw.println((int)((connections)/game));
-          firstTime = false;
-          }
           
           //read points from client and set them in the points list
           ObjectInputStream os = new ObjectInputStream(myS.getInputStream());

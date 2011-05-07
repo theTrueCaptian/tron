@@ -50,7 +50,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
     y= 100;
     myPoints.add(new Point(x, y));
    
-  new AePlayWave("daft_punk.wav").start();
+  new AePlayWave("media/daft_punk.wav").start();
   soundLoop.start();
   menu = new GameMenu();
   window = new TronFrame();
@@ -101,7 +101,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
   
   
   public void actionPerformed(ActionEvent e){
-    if(e.getSource()==soundLoop){new AePlayWave("daft_punk.wav").start();}
+    if(e.getSource()==soundLoop){new AePlayWave("media/daft_punk.wav").start();}
     else if(e.getSource()==move){
       if(direction.equals("u")){y--;}
       else if(direction.equals("d")){y++;}
@@ -147,12 +147,10 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
       t++;
       
     }
-    
-    
-    
-    Image tron1 = toolkit.getImage("tron1.jpg");
-    Image tron2 = toolkit.getImage("tron2.jpg");
-    Image loading = toolkit.getImage("loading.gif");
+
+    Image tron1 = toolkit.getImage("media/tron1.jpg");
+    Image tron2 = toolkit.getImage("media/tron2.jpg");
+    Image loading = toolkit.getImage("media/loading.gif");
     GameMenu(){
       time.start();
   
@@ -166,9 +164,6 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
      g.drawImage(loading, (width/2)-50, (height/2)-30, this);
      
      }
-
-    
-  
   }
   
   /**************************************
@@ -200,10 +195,6 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
        
        
      }
-     
-     
-     
-     
     }
   }
   

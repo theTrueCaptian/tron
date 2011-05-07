@@ -147,9 +147,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
       t++;
       
     }
-    
-    
-    
+
     Image tron1 = toolkit.getImage("media/tron1.jpg");
     Image tron2 = toolkit.getImage("media/tron2.jpg");
     Image loading = toolkit.getImage("media/loading.gif");
@@ -166,9 +164,6 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
      g.drawImage(loading, (width/2)-50, (height/2)-30, this);
      
      }
-
-    
-  
   }
   
   /**************************************
@@ -200,10 +195,6 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
        
        
      }
-     
-     
-     
-     
     }
   }
   
@@ -239,11 +230,11 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
       Thread.sleep(3000);
       myS = new Socket();
       myS.connect(new InetSocketAddress(host, port), timeOut);
-      connected = true;
+      
       System.out.println("Connected!");
       BufferedReader read = new BufferedReader(new InputStreamReader(myS.getInputStream()));
       String line = read.readLine();
-
+      connected = true;
       player = Integer.parseInt(line);
       System.out.println("You are player number: "+player);
       switch(player){
