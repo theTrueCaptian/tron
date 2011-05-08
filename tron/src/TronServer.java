@@ -8,20 +8,24 @@ import java.awt.event.*;
 class TronServer{
   public static void main(String args[]){new TronServer();}
   
+  private DatagramSocket broadcast; 
+  
   private int socketExceptions = 0;
   private int connections = 0;
   private int gamePort = 2001;
+  private int dataPort = 2002;
+  private int games = 0;
+  
   private String os = System.getProperty("os.name").toLowerCase();
-  private Socket myS;
+  
+  private Socket myS, dataS;
+  
   private LinkedList<Point> points = new LinkedList<Point>();
   private LinkedList<String> address = new LinkedList<String>();
   private LinkedList<String> players = new LinkedList<String>();
-  private int games = 0;
   private LinkedList<String> scores = new LinkedList<String>();
   
-  private void resetSocket(){
-    try{myS = new Socket(); myS.setReuseAddress(true); }catch(Exception e){System.out.println(e);}
-  }
+
   
   
   public TronServer(){
@@ -31,8 +35,8 @@ class TronServer{
     points.add(new Point());
     points.add(new Point());
     
-    
-    
+    new Thread(new BroadcastMessage()).start();
+    new Thread(new DataSocket()).start();
     
     System.out.println(os);
     //loop to accept a connection
@@ -65,6 +69,49 @@ class TronServer{
     }
   }//end constructor 
   
+  
+  
+  
+   private void resetSocket(){
+    try{myS = new Socket(); myS.setReuseAddress(true); }catch(Exception e){System.out.println(e);}
+  }
+   
+   class DataSocket implements Runnable{
+     public void run(){
+       while(true){
+         try{
+           ServerSocket ss = new ServerSocket(dataPort);
+           dataS = new Socket();
+           dataS = ss.accept();
+           
+           ObjectOutputStream oos = new ObjectOutputStream(dataS.getOutputStream());
+           oos.writeObject(players);
+           oos.writeObject(scores);
+           
+         }catch(Exception e){}
+
+       }
+     }
+   }
+   
+  class BroadcastMessage implements Runnable{
+    public void run(){
+      while(true){
+        try{
+        Thread.sleep(5000); 
+        broadcast = new DatagramSocket();
+        InetAddress addr = InetAddress.getLocalHost();
+        
+        byte[] buf = addr.getAddress();
+        
+        InetAddress group = InetAddress.getByName("224.0.0.251");
+        DatagramPacket packet = new DatagramPacket(buf, buf.length, group, 4446);
+        broadcast.send(packet);
+        
+        }catch(Exception e){}
+      }    
+    }
+  }
   
   class SocketThread implements Runnable{
     private Socket myS;
