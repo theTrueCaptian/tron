@@ -19,25 +19,40 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
   private String otherPlayers;
   private String games;
   private String myName = "";
+  
+  
+  
+  
   private int score = 0;
-  
-  
-  
   private Toolkit toolkit = Toolkit.getDefaultToolkit();
   private TronFrame window;
   private GameMenu menu;
+  private InfoFrame info;
   private int width, height;
-  private LinkedList<Point> myPoints = new LinkedList<Point>();
+  private Point me = new Point(0,0);
   private int player;
   private int x, y;
   private String direction = "u";
-  private Color color;
   private Random random = new Random();
-  private LinkedList<LinkedList<Point>> allPoints = new LinkedList<LinkedList<Point>>();
+  private Point[] allPoints = new Point[4];
+  private int[][] grid = new int[100][100];
+  
+  //change to menu from info panel
+  private void changeToMenu(){
+    this.add(menu);
+    info.setVisible(false);  
+  }
   
   //constructor
   public TronClient(){
-   
+    
+    for(int a = 0; a<100;a++){
+      for(int b = 0; b<100;b++){
+       grid[b][a] = 0; 
+      }
+      
+    }
+    
     try{
       System.setProperty("apple.laf.useScreenMenuBar", "true");
       System.setProperty ("com.apple.macos.useScreenMenuBar","true");
@@ -46,34 +61,31 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
     }catch(Exception e){System.out.println(e);}
     
     
-    x = 50;
-    y= 100;
-    myPoints.add(new Point(x, y));
+   
    
   new AePlayWave("media/daft_punk.wav").start();
   soundLoop.start();
-  menu = new GameMenu();
-  window = new TronFrame();
-  
+
   this.setSize(500,500);
   
   width = this.getWidth();
   height = this.getHeight();  
+  window = new TronFrame();
+  menu = new GameMenu();
+  info = new InfoFrame();
+
   this.setVisible(true);   
-  
-  
-  
-  
-  this.add(menu);
-  
-  
+
   this.setDefaultCloseOperation(EXIT_ON_CLOSE);
   this.addKeyListener(this);
+  menu.addKeyListener(this);
+  info.addKeyListener(this);
   this.setLocationRelativeTo(null);
   this.setMinimumSize(this.getSize());
-  new InfoFrame();
-  new SendData().run();
   
+  this.add(info);
+  //new InfoFrame();
+  new SendData().run();
   }
   
  public void goGame(){
@@ -108,29 +120,31 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
       else if(direction.equals("r")){x++;}
       else{x--;}
       window.repaint();
-      myPoints.add(new Point(x,y));
+      me = new Point(x,y);
       
-      if(x > 100){x=0;}
-      else if(x<0){x=100;}
-      else if(y>100){y=0;}
-      else if(y<0){y=100;}
+      if(x >= 99){x=1;}
+      else if(x<=1){x=99;}
+      else if(y>=99){y=1;}
+      else if(y<=1){y=99;}
       
-      for(int a = 0; a<allPoints.size(); a++){
-        if(allPoints.get(a).contains(new Point(x, y))){
+      //collision detection
+      
+      
+        if(grid[x][y] != 0){
         
           try{  
         ObjectOutputStream oos = new ObjectOutputStream(myS.getOutputStream());
-        oos.writeObject(new LinkedList<Point>());
-        oos.writeObject(Integer.toString(a));
-        
-        
+        oos.writeObject(new Point(-5,-5));
+        oos.flush();
+        PrintWriter pw = new PrintWriter(myS.getOutputStream(), true);
+        pw.println(Integer.toString(grid[x][y]));
+        Thread.sleep(3000);
           }catch(Exception ex){}
-          
+          System.out.println("hit");
           System.exit(0);
-        
         } 
         
-      }
+      
       
       
     }
@@ -170,30 +184,33 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
    * begin coding of the tron game panel*
    **************************************/
   
-  public class TronFrame extends JPanel{
-   
+  public class TronFrame extends JPanel implements KeyListener{
+     public void keyTyped(KeyEvent e){}
+  public void keyPressed(KeyEvent e){
+    
+   if(e.getKeyCode() == e.VK_LEFT){if(direction.equals("r")){}else{direction = "l";}}
+   else if(e.getKeyCode() == e.VK_RIGHT){if(direction.equals("l")){}else{direction = "r";}}
+   else if(e.getKeyCode() == e.VK_UP){if(direction.equals("d")){}else{direction = "u";}}
+   else if(e.getKeyCode() == e.VK_DOWN){if(direction.equals("u")){}else{direction = "d";}}
+  
+  }
+  public void keyReleased(KeyEvent e){}
+  
     public void paintComponent(Graphics g){
      super.paintComponent(g); 
      this.setBackground(new Color(0,100,200));
      
      
      
-     for(int a = 0; a<allPoints.size(); a++){
-       for(int b = 0; b<allPoints.get(a).size(); b++){
-         g.fill3DRect(
-                      (int)((width/100)*allPoints.get(a).get(b).getX()), 
-                      (int)((height/100)*allPoints.get(a).get(b).getY()), width/100,height/100,true); 
-       }
-       
-     }
-     
-     g.setColor(color);
-     for(int a = 0; a<myPoints.size(); a++){
-       g.fill3DRect(
-                      (int)((width/100)*myPoints.get(a).getX()), 
-                      (int)((height/100)*myPoints.get(a).getY()), width/100,height/100,true); 
-       
-       
+     for(int a = 0; a<99; a++){
+       for(int b = 0; b<99; b++){
+         switch(grid[b][a]){
+         case 1:{g.setColor(new Color(255, 0, 0)); g.fill3DRect((int)((width/100)*b),(int)((height/100)*a), width/100,height/100,true); break;}
+         case 2:{g.setColor(new Color(0, 255, 0)); g.fill3DRect((int)((width/100)*b),(int)((height/100)*a), width/100,height/100,true); break;}
+         case 3:{g.setColor(new Color(0, 0, 255)); g.fill3DRect((int)((width/100)*b),(int)((height/100)*a), width/100,height/100,true); break;}
+         case 4:{g.setColor(new Color(255, 255, 0)); g.fill3DRect((int)((width/100)*b),(int)((height/100)*a), width/100,height/100,true); break;}
+         }
+       }     
      }
     }
   }
@@ -204,7 +221,18 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
   
   
   public class SendData extends SwingWorker<Void, Void>{
+    
+    //method to reset a dead players grid points to 0 so they wont be drawn
+    public void reset(int p){
+      for(int a = 0; a<100; a++){
+        for(int b = 0; b<100; b++){
+          if(grid[b][a] == p){grid[b][a] = 0;} 
+        }
+      }
+    }
+    
     public Void doInBackground(){
+      
       //connect
       while(!connected){if(readyToConnect){connect();}}
       //start moving
@@ -212,10 +240,22 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
       //start sending list of points
       while(connected){
       try{
+        //send my current point to the server
         ObjectOutputStream oos = new ObjectOutputStream(myS.getOutputStream());
-        oos.writeObject(myPoints);
+        oos.writeObject(me);
+        //read an array of points from the server
         ObjectInputStream ois = new ObjectInputStream(myS.getInputStream());
-        allPoints = (LinkedList<LinkedList<Point>>)ois.readObject();
+        Point[] p = (Point[])ois.readObject();
+        //if one of these points contains -5, player has died
+        for(int a = 0; a<4; a++){
+          if(p[a].x == -5){reset(a); p[a].x = 0; p[a].y = 0;} 
+        }
+        //set grid value so the players point can be drawn
+        grid[p[0].x][p[0].y] = 1;
+        grid[p[1].x][p[1].y] = 2;
+        grid[p[2].x][p[2].y] = 3;
+        grid[p[3].x][p[3].y] = 4;
+        
       }
       catch(Exception e){System.out.println(e);}
       }
@@ -229,27 +269,31 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
       try{
       Thread.sleep(3000);
       myS = new Socket();
+      //connect to server
       myS.connect(new InetSocketAddress(host, port), timeOut);
-      
+      //print connected message
       System.out.println("Connected!");
+      //read servers answer message
       BufferedReader read = new BufferedReader(new InputStreamReader(myS.getInputStream()));
       String line = read.readLine();
+      //set connected to true
       connected = true;
+      //set your player number
       player = Integer.parseInt(line);
       System.out.println("You are player number: "+player);
+      //set your position and direction
       switch(player){
-        case 1:{x = 50; y = 100; direction="u"; break;}
-        case 2:{x = 0; y = 50; direction="r"; break;}
-        case 3:{x = 100; y = 50; direction="l"; break;}
-        case 4:{x = 50; y = 0; direction="d"; break;}
+        case 1:{x = 50; y = 99; direction="u"; break;}
+        case 2:{x = 1; y = 50; direction="r"; break;}
+        case 3:{x = 99; y = 50; direction="l"; break;}
+        case 4:{x = 50; y = 1; direction="d"; break;}
       }
-      myPoints.add(new Point(x,y));
-      int r = random.nextInt(255);
-      int g = random.nextInt(255);
-      int b = random.nextInt(255);
-      color = new Color(r,g,b);
+      //add new point
+      me = new Point(x,y);
+      
+      //start game
       goGame();
-      }catch(Exception e){System.out.println("Error connecting to server\nTrying again!!"+e);}
+      }catch(Exception e){System.out.println(e);}
     }
     
   }
@@ -257,7 +301,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
   /*****************************************
    * begin coding of game information frame*
    *****************************************/
-  public class InfoFrame extends JFrame implements MouseListener{
+  public class InfoFrame extends JPanel implements MouseListener{
     JTextArea textArea = new JTextArea(5, 20);
     JTextArea players = new JTextArea(20, 20);
     JPanel mainPanel = new JPanel();
@@ -266,7 +310,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
     JButton b = new JButton("Connect");
     JTextField address = new JTextField(20);
     JTextField name = new JTextField(20);
-    IndicatorLight ind = new IndicatorLight();
+
     
     
     
@@ -281,17 +325,10 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
     rightPanel.add(address);
     rightPanel.add(textArea);
     rightPanel.add(b);  
-    rightPanel.add(ind);
-    ind.setSize(50, 5);
-    mainPanel.setLayout(new GridLayout(1, 2));
-    mainPanel.add(leftPanel);
-    mainPanel.add(rightPanel);
-    this.add(mainPanel);
-    
-    this.setSize(500, 400);
-    this.setMinimumSize(this.getSize());
-    this.setLocation(0, (height/3)*2);
-    this.setVisible(true);
+    this.setLayout(new GridLayout(1, 2));
+    this.add(leftPanel);
+    this.add(rightPanel);
+
     address.setText("127.0.0.1");
     
     
@@ -307,31 +344,14 @@ class TronClient extends JFrame implements ActionListener, KeyListener{
   public void mousePressed(MouseEvent e){}
   public void mouseReleased(MouseEvent e){}
   public void mouseClicked(MouseEvent e){
+    changeToMenu();
     myName = name.getText();
     host = address.getText();
     readyToConnect = true;
-    ind.repaint();
-  }
-   
-  public class IndicatorLight extends JPanel{
-    public void paintComponent(Graphics g){
-     super.paintComponent(g);
-     if(!connected){
-       g.setColor(new Color(255, 0,0));
-       g.fillOval(0,0,5,5);
-       g.setColor(new Color(0,0,0));
-       g.drawOval(0,0,5,5);
-     }
-     else{
-       g.setColor(new Color(0, 255,0));
-       g.fillOval(0,0,5,5);
-       g.setColor(new Color(0,0,0));
-       g.drawOval(0,0,5,5);
-     }
-     
-    }
     
   }
+   
+ 
   
   
     
