@@ -10,6 +10,7 @@ import java.lang.Thread;
 class TronClient extends JFrame implements ActionListener, KeyListener, MouseListener{
   public static void main(String args[]){new TronClient();}
   //global variables
+  private Color color;
   
   private javax.swing.Timer soundLoop = new javax.swing.Timer(64800, this);
   private javax.swing.Timer move = new javax.swing.Timer(70, this);
@@ -24,7 +25,6 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
   private int width, height;
   private int player;
   private int x, y;
-  private int[][] grid = new int[100][100];
   
   private String host = "www.michaeljackson.com";
   private String otherPlayers;
@@ -36,16 +36,15 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
   private Socket myS;
   
   private LinkedList<String> availableGames = new LinkedList<String>();
+  private LinkedList<Point> myPoints = new LinkedList<Point>();
+  private LinkedList<LinkedList<Point>> allPoints = new LinkedList<LinkedList<Point>>();
   
   private Toolkit toolkit = Toolkit.getDefaultToolkit();
   
   private TronFrame window;
   
   private GameMenu menu;
-  
-  private Point me = new Point(0,0);
-  private Point[] allPoints = new Point[4];  
-  
+
   private Random random = new Random();
   
   private JTable games = new JTable(20, 1);
@@ -56,25 +55,23 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
   private JPanel rightPanel = new JPanel();
   
   private JButton b = new JButton("Connect");
+  private JButton b1 = new JButton("Start Server");
   
   private JTextField name = new JTextField(20);
   
   private JScrollPane playersPane = new JScrollPane();
   private JScrollPane gamesPane = new JScrollPane();
   
-  
+  private Random r = new Random();
   
   
   //constructor
   public TronClient(){
-    
-    
-    
-    for(int a = 0; a<100;a++){
-      for(int b = 0; b<100;b++){
-        grid[b][a] = 0; 
-      }     
-    }
+    color = new Color(r.nextInt(255), r.nextInt(255),r.nextInt(255));
+    allPoints.add(new LinkedList<Point>());
+    allPoints.add(new LinkedList<Point>());
+    allPoints.add(new LinkedList<Point>());
+    allPoints.add(new LinkedList<Point>());
     
     try{
       System.setProperty("apple.laf.useScreenMenuBar", "true");
@@ -111,9 +108,11 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
     
     leftPanel.add(playersPane);
     b.addMouseListener(this);
+    b1.addMouseListener(this);
     rightPanel.add(name);
     rightPanel.add(gamesPane);
     rightPanel.add(b);  
+    rightPanel.add(b1);
     this.setLayout(new GridLayout(1, 2));
     this.add(leftPanel);
     this.add(rightPanel);
@@ -150,7 +149,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
     window.addKeyListener(this);
     
     move.start(); 
-    
+    new Thread(new UpdatePoints()).start();
     
   }
   
@@ -165,13 +164,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
     new Thread(new ConnectToServer()).start();
   }
   
-  public void reset(int p){
-    for(int a = 0; a<100; a++){
-      for(int b = 0; b<100; b++){
-        if(grid[b][a] == p){grid[b][a] = 0;} 
-      }
-    }
-  }
+ 
   
   /**************************************************
     *begin coding event handlers for tronclient class*
@@ -185,16 +178,24 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
   public void mousePressed(MouseEvent e){}
   public void mouseReleased(MouseEvent e){}
   public void mouseClicked(MouseEvent e){
+    
+    if(e.getSource() == b){
     changeToMenu();
     myName = name.getText();
-    readyToConnect = true;  
+    readyToConnect = true; 
+    }
+    
+    else if(e.getSource() == b1){
+     new Thread(new TronServer()).start(); 
+    }
+    
+    
+    
   }
   public void keyTyped(KeyEvent e){}
   public void keyPressed(KeyEvent e){
     
-    if(e.getKeyCode() == e.VK_LEFT){
-      System.out.println("left");
-      if(direction.equals("r")){}else{direction = "l";}}
+    if(e.getKeyCode() == e.VK_LEFT){if(direction.equals("r")){}else{direction = "l";}}
     else if(e.getKeyCode() == e.VK_RIGHT){if(direction.equals("l")){}else{direction = "r";}}
     else if(e.getKeyCode() == e.VK_UP){if(direction.equals("d")){}else{direction = "u";}}
     else if(e.getKeyCode() == e.VK_DOWN){if(direction.equals("u")){}else{direction = "d";}}
@@ -218,7 +219,8 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
       
       
       window.repaint();
-      me.move(x, y);
+      
+      myPoints.add(new Point(x, y));
       
       
       if(x >= 99){x=1;}
@@ -228,44 +230,21 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
       
       //collision detection
       
-      
-      if(grid[x][y] != 0){
-        
+      for(int a = 0; a<4; a++){
+      if(allPoints.get(a).contains(new Point(x, y))){
         try{  
           ObjectOutputStream oos = new ObjectOutputStream(myS.getOutputStream());
-          oos.writeObject(new Point(-5,-5));
+          oos.writeObject(new LinkedList<Point>());
           oos.flush();
           PrintWriter pw = new PrintWriter(myS.getOutputStream(), true);
-          pw.println(Integer.toString(grid[x][y]));
+          pw.println(Integer.toString(a));
           Thread.sleep(3000);
         }catch(Exception ex){}
         System.out.println("hit");
         System.exit(0);
+       }
       }
-      
-      else{
-        try{
-          //send my current point to the server
-          ObjectOutputStream oos = new ObjectOutputStream(myS.getOutputStream());
-          oos.writeObject(me);
-          //read an array of points from the server
-          ObjectInputStream ois = new ObjectInputStream(myS.getInputStream());
-          Point[] p = (Point[])ois.readObject();
-          //if one of these points contains -5, player has died
-          for(int a = 0; a<4; a++){
-            if(p[a].x == -5){reset(a); p[a].x = 0; p[a].y = 0;} 
-          }
-          //set grid value so the players point can be drawn
-          grid[p[0].x][p[0].y] = 1;
-          grid[p[1].x][p[1].y] = 2;
-          grid[p[2].x][p[2].y] = 3;
-          grid[p[3].x][p[3].y] = 4;
-          
-        }
-        catch(Exception ex){System.out.println(ex);}
-        
-        
-      }
+
       
       
     }
@@ -311,15 +290,11 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
       super.paintComponent(g); 
       this.setBackground(new Color(0,100,200));
       
-      for(int a = 0; a<99; a++){
-        for(int b = 0; b<99; b++){
-          switch(grid[b][a]){
-            case 1:{g.setColor(new Color(255, 0, 0)); g.fill3DRect((int)((width/100)*b),(int)((height/100)*a), width/100,height/100,true); break;}
-            case 2:{g.setColor(new Color(0, 255, 0)); g.fill3DRect((int)((width/100)*b),(int)((height/100)*a), width/100,height/100,true); break;}
-            case 3:{g.setColor(new Color(0, 0, 255)); g.fill3DRect((int)((width/100)*b),(int)((height/100)*a), width/100,height/100,true); break;}
-            case 4:{g.setColor(new Color(255, 255, 0)); g.fill3DRect((int)((width/100)*b),(int)((height/100)*a), width/100,height/100,true); break;}
-          }
-        }     
+      for(int a = 0; a<4; a++){
+        if(a == player-1){g.setColor(color);}
+        for(int b = 0; b<allPoints.get(a).size(); b++){         
+        g.fill3DRect((width/100)*allPoints.get(a).get(b).x, (width/100)*allPoints.get(a).get(b).y, 10, 10, true);
+        }
       }
     }
   }
@@ -330,17 +305,17 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
   
   //thread used to search for servers that are broadcasting
   public class SearchForGames implements Runnable, ListSelectionListener{
+    
     public void run(){
       try{
         byte[] b = new byte[1024];
-        System.out.println(new String(b));
         DatagramPacket dgram = new DatagramPacket(b, b.length);
         
         MulticastSocket socket = new MulticastSocket(4446); // must bind receive side
         socket.joinGroup(InetAddress.getByName("224.0.0.251"));
         
         while(!connected) {
-          Thread.sleep(5000);
+          
           socket.receive(dgram); // blocks until a datagram is received
           System.out.println("Received " + dgram.getLength() + " bytes from " + dgram.getAddress());
           dgram.setLength(b.length); // must reset length field!
@@ -393,11 +368,29 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
         players = new JTable(ps, cols);
         playersPane.getViewport().add(players);
         
-        dataS.close();
       }catch(Exception ex){System.out.println(ex);}
     } 
   }
   
+  public class UpdatePoints implements Runnable{
+    public void run(){
+      while(true){
+        try{
+          //send my current point to the server
+          ObjectOutputStream oos = new ObjectOutputStream(myS.getOutputStream());
+          oos.writeObject(myPoints);
+          
+          //read an array of points from the server
+          ObjectInputStream ois = new ObjectInputStream(myS.getInputStream());
+          allPoints = (LinkedList<LinkedList<Point>>)ois.readObject();
+ 
+        }
+        catch(Exception ex){System.out.println(ex);} 
+      }
+    }
+    
+    
+  }
   
   //thread used to send data to the server
   public class ConnectToServer implements Runnable{
@@ -414,6 +407,8 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
         //read servers answer message
         BufferedReader read = new BufferedReader(new InputStreamReader(myS.getInputStream()));
         String line = read.readLine();
+        ObjectInputStream ois = new ObjectInputStream(myS.getInputStream());
+        allPoints = (LinkedList<LinkedList<Point>>)ois.readObject();
         //set connected to true
         connected = true;
         //set your player number
@@ -427,7 +422,8 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
           case 4:{x = 50; y = 1; direction="d"; break;}
         }
         //add new point
-        me = new Point(x,y);
+        
+        myPoints.add(new Point(x, y));
         
         //start game
         goGame();

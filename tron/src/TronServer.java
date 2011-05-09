@@ -5,8 +5,8 @@ import java.awt.Point;
 import java.awt.event.*;
 
 
-class TronServer{
-  public static void main(String args[]){new TronServer();}
+class TronServer implements Runnable{
+  //public static void main(String args[]){new TronServer();}
   
   private DatagramSocket broadcast; 
   
@@ -14,13 +14,14 @@ class TronServer{
   private int connections = 0;
   private int gamePort = 2001;
   private int dataPort = 2002;
-  private int games = 0;
   
   private String os = System.getProperty("os.name").toLowerCase();
   
+  private boolean busy = false;
+  
   private Socket myS, dataS;
   
-  private LinkedList<Point> points = new LinkedList<Point>();
+  private LinkedList<LinkedList<Point>> points = new LinkedList<LinkedList<Point>>();
   private LinkedList<String> address = new LinkedList<String>();
   private LinkedList<String> players = new LinkedList<String>();
   private LinkedList<String> scores = new LinkedList<String>();
@@ -28,12 +29,12 @@ class TronServer{
 
   
   
-  public TronServer(){
+  public void run(){
     
-    points.add(new Point());
-    points.add(new Point());
-    points.add(new Point());
-    points.add(new Point());
+    points.add(new LinkedList<Point>());
+    points.add(new LinkedList<Point>());
+    points.add(new LinkedList<Point>());
+    points.add(new LinkedList<Point>());
     
     
     new Thread(new BroadcastMessage()).start();
@@ -53,11 +54,9 @@ class TronServer{
         
         //itterate connections variable
         connections++;
-        //add to number of games variable 
-        if(connections % 4 == 0 || games == 0){games++;}
-        
+
         System.out.println("connection accepted");
-        
+        if(connections == 2){busy = true; System.out.println("Game Started");}
         
         
         
@@ -68,11 +67,11 @@ class TronServer{
         String remoteIP = ipAddr[0]+"."+ipAddr[1]+"."+ipAddr[2]+"."+ipAddr[3]; 
         address.add(remoteIP);
         players.add(remoteIP);
-        points.add(new Point(0,0));
+        points.add(new LinkedList<Point>());
         scores.add("0");
         
         //start new thread to listen for this clients point updates, sending it the socket pointer and its player number
-        new Thread(new SocketThread(myS, connections, games)).start();
+        new Thread(new SocketThread(myS, connections)).start();
         
         //print any exceptions
       }catch(Exception e){ }
@@ -83,7 +82,7 @@ class TronServer{
    
    class DataSocket implements Runnable{
      public void run(){
-       while(true){
+       while(!busy){
          try{
            ServerSocket ss = new ServerSocket(dataPort);
            dataS = new Socket();
@@ -101,7 +100,7 @@ class TronServer{
    
   class BroadcastMessage implements Runnable{
     public void run(){
-      while(true){
+      while(!busy){
         try{
         Thread.sleep(5000); 
         broadcast = new DatagramSocket();
@@ -121,76 +120,55 @@ class TronServer{
   class SocketThread implements Runnable{
     private Socket localSocket;
     private int player;
-    private int game;
-    private Point[] myPoints = new Point[4];
+    
     private boolean firstTime = true;
     
-    public SocketThread(Socket rs, int c, int g)
+    public SocketThread(Socket rs, int c)
     {
       localSocket = rs;
       player = c;
-      game = g;
-      myPoints[0] = new Point();
-      myPoints[1] = new Point();
-      myPoints[2] = new Point();
-      myPoints[3] = new Point();
-      
+
     }//constructor
     
     public void run(){      
       try{
-        while(true){        
-          //read points from client and add them to there point list
+        //send your player number only once
+        PrintWriter pw = new PrintWriter(localSocket.getOutputStream(), true);
+        pw.println(player);
+        ObjectOutputStream oos = new ObjectOutputStream(localSocket.getOutputStream());             
+        oos.writeObject(points);
+        while(!busy){        
+          
           
           //check if there are 4 players in this game
-          if(connections == game*4 || true){
-            
-            
-            if(firstTime){
-              //send your player number only once
-              PrintWriter pw = new PrintWriter(localSocket.getOutputStream(), true);
-              pw.println((int)((connections)/game));
-              firstTime = false;
-            }
-            
+          if(connections == 2){
             //read points from client and set them in the points list
             ObjectInputStream os = new ObjectInputStream(localSocket.getInputStream());
-            Point p = (Point)os.readObject();
+            LinkedList<Point> p = (LinkedList<Point>)os.readObject();
             
-            if(p.x != -5){
+            //check if player sends back an empty list to indicate death
+            if(p.size() != 0){
               points.set(player-1, p);
-              
-              //collect 4 points lists for players in this game only and send it back
-              myPoints[0] = points.get((game*1)-1);
-              myPoints[1] = points.get((game*2)-1);
-              myPoints[2] = points.get((game*3)-1);
-              myPoints[3] = points.get((game*4)-1);
-              
-              ObjectOutputStream oos = new ObjectOutputStream(localSocket.getOutputStream());
-              
-              oos.writeObject(myPoints);
-              
-              
+              oos = new ObjectOutputStream(localSocket.getOutputStream());             
+              oos.writeObject(points);
             }
             else{
               BufferedReader read = new BufferedReader(new InputStreamReader(localSocket.getInputStream()));
               String line = read.readLine();
               int winner = Integer.parseInt(Character.toString(line.charAt(line.length()-1))); 
               System.out.println(winner);
-              points.set(player-1, new Point());
+              points.set(player-1, new LinkedList<Point>());
               scores.set(winner-1, Integer.toString((Integer.parseInt((String)scores.get(winner-1))+30)));
               System.out.println(scores.get(winner-1));
               localSocket.close();
-              break;
-              
+              break;   
             }
           }
-          
         }//while
       }
       catch(Exception e){
         System.out.println(e);
-        points.set(player-1, new Point(-5,-5));
+        points.set(player-1, new LinkedList<Point>());
         }  
       
       

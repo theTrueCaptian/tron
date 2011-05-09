@@ -5,8 +5,8 @@ import java.awt.Point;
 import java.awt.event.*;
 
 
-class TronServer{
-  public static void main(String args[]){new TronServer();}
+class TronServer implements Runnable{
+  //public static void main(String args[]){new TronServer();}
   
   private DatagramSocket broadcast; 
   
@@ -20,7 +20,7 @@ class TronServer{
   
   private Socket myS, dataS;
   
-  private LinkedList<Point> points = new LinkedList<Point>();
+  private LinkedList<LinkedList<Point>> points = new LinkedList<LinkedList<Point>>();
   private LinkedList<String> address = new LinkedList<String>();
   private LinkedList<String> players = new LinkedList<String>();
   private LinkedList<String> scores = new LinkedList<String>();
@@ -28,12 +28,12 @@ class TronServer{
 
   
   
-  public TronServer(){
+  public void run(){
     
-    points.add(new Point());
-    points.add(new Point());
-    points.add(new Point());
-    points.add(new Point());
+    points.add(new LinkedList<Point>());
+    points.add(new LinkedList<Point>());
+    points.add(new LinkedList<Point>());
+    points.add(new LinkedList<Point>());
     
     
     new Thread(new BroadcastMessage()).start();
@@ -50,14 +50,17 @@ class TronServer{
         System.out.println("Waiting for player number: "+(connections+1));
         myS = new Socket();
         myS = serversocket.accept();
+        
+        //itterate connections variable
         connections++;
-        System.out.println("connection accepted");
-        //create new linked list and add it to the points linked list, this new linked list will hold each point that tron has visited.
-        points.add(new Point(0,0));
-        scores.add("0");
+        //add to number of games variable 
         if(connections % 4 == 0 || games == 0){games++;}
-        //start new thread to listen for this clients point updates, sending it the socket pointer and its player number
-        new Thread(new SocketThread(myS, connections, games)).start();
+        
+        System.out.println("connection accepted");
+        
+        
+        
+        
         
         //read remote address
         InetAddress remoteAddress = myS.getInetAddress();
@@ -65,6 +68,11 @@ class TronServer{
         String remoteIP = ipAddr[0]+"."+ipAddr[1]+"."+ipAddr[2]+"."+ipAddr[3]; 
         address.add(remoteIP);
         players.add(remoteIP);
+        points.add(new LinkedList<Point>());
+        scores.add("0");
+        
+        //start new thread to listen for this clients point updates, sending it the socket pointer and its player number
+        new Thread(new SocketThread(myS, connections, games)).start();
         
         //print any exceptions
       }catch(Exception e){ }
@@ -114,7 +122,7 @@ class TronServer{
     private Socket localSocket;
     private int player;
     private int game;
-    private Point[] myPoints = new Point[4];
+    private LinkedList<LinkedList<Point>> myPoints = new LinkedList<LinkedList<Point>>();
     private boolean firstTime = true;
     
     public SocketThread(Socket rs, int c, int g)
@@ -122,10 +130,10 @@ class TronServer{
       localSocket = rs;
       player = c;
       game = g;
-      myPoints[0] = new Point();
-      myPoints[1] = new Point();
-      myPoints[2] = new Point();
-      myPoints[3] = new Point();
+      myPoints.add(new LinkedList<Point>());
+      myPoints.add(new LinkedList<Point>());
+      myPoints.add(new LinkedList<Point>());
+      myPoints.add(new LinkedList<Point>());
       
     }//constructor
     
@@ -147,16 +155,16 @@ class TronServer{
             
             //read points from client and set them in the points list
             ObjectInputStream os = new ObjectInputStream(localSocket.getInputStream());
-            Point p = (Point)os.readObject();
+            LinkedList<Point> p = (LinkedList<Point>)os.readObject();
             
-            if(p.x != -5){
+            if(p.size() != 0){
               points.set(player-1, p);
               
               //collect 4 points lists for players in this game only and send it back
-              myPoints[0] = points.get((game*1)-1);
-              myPoints[1] = points.get((game*2)-1);
-              myPoints[2] = points.get((game*3)-1);
-              myPoints[3] = points.get((game*4)-1);
+              myPoints.set(0, points.get((game*1)-1));
+              myPoints.set(1,  points.get((game*2)-1));
+              myPoints.set(2,  points.get((game*3)-1));
+              myPoints.set(3, points.get((game*4)-1));
               
               ObjectOutputStream oos = new ObjectOutputStream(localSocket.getOutputStream());
               
@@ -169,7 +177,7 @@ class TronServer{
               String line = read.readLine();
               int winner = Integer.parseInt(Character.toString(line.charAt(line.length()-1))); 
               System.out.println(winner);
-              points.set(player-1, new Point());
+              points.set(player-1, new LinkedList<Point>());
               scores.set(winner-1, Integer.toString((Integer.parseInt((String)scores.get(winner-1))+30)));
               System.out.println(scores.get(winner-1));
               localSocket.close();
@@ -182,7 +190,7 @@ class TronServer{
       }
       catch(Exception e){
         System.out.println(e);
-        points.set(player-1, new Point(-5,-5));
+        points.set(player-1, new LinkedList<Point>());
         }  
       
       
