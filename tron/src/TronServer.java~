@@ -8,20 +8,24 @@ import java.awt.event.*;
 class TronServer{
   public static void main(String args[]){new TronServer();}
   
+  private DatagramSocket broadcast; 
+  
   private int socketExceptions = 0;
   private int connections = 0;
   private int gamePort = 2001;
+  private int dataPort = 2002;
+  private int games = 0;
+  
   private String os = System.getProperty("os.name").toLowerCase();
-  private Socket myS;
+  
+  private Socket myS, dataS;
+  
   private LinkedList<Point> points = new LinkedList<Point>();
   private LinkedList<String> address = new LinkedList<String>();
   private LinkedList<String> players = new LinkedList<String>();
-  private int games = 0;
   private LinkedList<String> scores = new LinkedList<String>();
   
-  private void resetSocket(){
-    try{myS = new Socket(); myS.setReuseAddress(true); }catch(Exception e){System.out.println(e);}
-  }
+
   
   
   public TronServer(){
@@ -32,12 +36,13 @@ class TronServer{
     points.add(new Point());
     
     
-    
+    new Thread(new BroadcastMessage()).start();
+    new Thread(new DataSocket()).start();
     
     System.out.println(os);
     //loop to accept a connection
     while(true){   
-      if(socketExceptions > 10){resetSocket(); socketExceptions = 0;}
+      
       try{   
         
         // create socket
@@ -59,15 +64,54 @@ class TronServer{
         byte[] ipAddr = remoteAddress.getAddress();
         String remoteIP = ipAddr[0]+"."+ipAddr[1]+"."+ipAddr[2]+"."+ipAddr[3]; 
         address.add(remoteIP);
+        players.add(remoteIP);
         
         //print any exceptions
-      }catch(Exception e){socketExceptions++;}
+      }catch(Exception e){ }
     }
   }//end constructor 
   
   
+   
+   class DataSocket implements Runnable{
+     public void run(){
+       while(true){
+         try{
+           ServerSocket ss = new ServerSocket(dataPort);
+           dataS = new Socket();
+           dataS = ss.accept();
+           
+           ObjectOutputStream oos = new ObjectOutputStream(dataS.getOutputStream());
+           oos.writeObject(players);
+           oos.writeObject(scores);
+           
+         }catch(Exception e){}
+
+       }
+     }
+   }
+   
+  class BroadcastMessage implements Runnable{
+    public void run(){
+      while(true){
+        try{
+        Thread.sleep(5000); 
+        broadcast = new DatagramSocket();
+        InetAddress addr = InetAddress.getLocalHost();
+        
+        byte[] buf = addr.getAddress();
+        
+        InetAddress group = InetAddress.getByName("224.0.0.251");
+        DatagramPacket packet = new DatagramPacket(buf, buf.length, group, 4446);
+        broadcast.send(packet);
+        
+        }catch(Exception e){}
+      }    
+    }
+  }
+  
   class SocketThread implements Runnable{
-    private Socket myS;
+    private Socket localSocket;
     private int player;
     private int game;
     private Point[] myPoints = new Point[4];
@@ -75,7 +119,7 @@ class TronServer{
     
     public SocketThread(Socket rs, int c, int g)
     {
-      myS = rs;
+      localSocket = rs;
       player = c;
       game = g;
       myPoints[0] = new Point();
@@ -96,13 +140,13 @@ class TronServer{
             
             if(firstTime){
               //send your player number only once
-              PrintWriter pw = new PrintWriter(myS.getOutputStream(), true);
+              PrintWriter pw = new PrintWriter(localSocket.getOutputStream(), true);
               pw.println((int)((connections)/game));
               firstTime = false;
             }
             
             //read points from client and set them in the points list
-            ObjectInputStream os = new ObjectInputStream(myS.getInputStream());
+            ObjectInputStream os = new ObjectInputStream(localSocket.getInputStream());
             Point p = (Point)os.readObject();
             
             if(p.x != -5){
@@ -114,21 +158,21 @@ class TronServer{
               myPoints[2] = points.get((game*3)-1);
               myPoints[3] = points.get((game*4)-1);
               
-              ObjectOutputStream oos = new ObjectOutputStream(myS.getOutputStream());
+              ObjectOutputStream oos = new ObjectOutputStream(localSocket.getOutputStream());
               
               oos.writeObject(myPoints);
               
               
             }
             else{
-              BufferedReader read = new BufferedReader(new InputStreamReader(myS.getInputStream()));
+              BufferedReader read = new BufferedReader(new InputStreamReader(localSocket.getInputStream()));
               String line = read.readLine();
               int winner = Integer.parseInt(Character.toString(line.charAt(line.length()-1))); 
               System.out.println(winner);
               points.set(player-1, new Point());
               scores.set(winner-1, Integer.toString((Integer.parseInt((String)scores.get(winner-1))+30)));
               System.out.println(scores.get(winner-1));
-              myS.close();
+              localSocket.close();
               break;
               
             }

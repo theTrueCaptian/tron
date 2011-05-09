@@ -5,8 +5,9 @@ import java.awt.event.*;
 import java.net.*;
 import java.io.*;
 import javax.swing.event.*;
+import java.lang.Thread;
 
-class TronClient extends JFrame implements ActionListener, KeyListener, MouseListener, ListSelectionListener{
+class TronClient extends JFrame implements ActionListener, KeyListener, MouseListener{
   public static void main(String args[]){new TronClient();}
   //global variables
   
@@ -17,6 +18,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
   private boolean readyToConnect = false;
   
   private int port = 2001;
+  private int dataPort = 2002;
   private int timeOut = 10000;
   private int score = 0;
   private int width, height;
@@ -32,9 +34,9 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
   private String direction = "u";
   
   private Socket myS;
-
+  
   private LinkedList<String> availableGames = new LinkedList<String>();
-
+  
   private Toolkit toolkit = Toolkit.getDefaultToolkit();
   
   private TronFrame window;
@@ -45,7 +47,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
   private Point[] allPoints = new Point[4];  
   
   private Random random = new Random();
-
+  
   private JTable games = new JTable(20, 1);
   private JTable players;
   
@@ -55,20 +57,19 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
   
   private JButton b = new JButton("Connect");
   
-  private JTextField address = new JTextField(20);
   private JTextField name = new JTextField(20);
   
   private JScrollPane playersPane = new JScrollPane();
   private JScrollPane gamesPane = new JScrollPane();
   
   
-
+  
   
   //constructor
   public TronClient(){
     
     
-    games = new JTable(tableInfo, tColumns);
+    
     for(int a = 0; a<100;a++){
       for(int b = 0; b<100;b++){
         grid[b][a] = 0; 
@@ -98,6 +99,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
     
     name.setBorder(BorderFactory.createTitledBorder("My name"));
     
+    games = new JTable(tableInfo, tColumns);
     gamesPane.add(games); 
     gamesPane.setPreferredSize(new Dimension(200, 100));
     gamesPane.setBorder(BorderFactory.createTitledBorder("Games"));
@@ -106,7 +108,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
     playersPane.setBorder(BorderFactory.createTitledBorder("Players"));   
     playersPane.add(players);
     playersPane.setPreferredSize(new Dimension(200, 400));
-      
+    
     leftPanel.add(playersPane);
     b.addMouseListener(this);
     rightPanel.add(name);
@@ -116,7 +118,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
     this.add(leftPanel);
     this.add(rightPanel);
     
-    address.setText("127.0.0.1");
+    
     
     this.setVisible(true);   
     
@@ -124,27 +126,35 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
     this.setLocationRelativeTo(null);
     this.setMinimumSize(this.getSize());
     
-    rightPanel.addKeyListener(this);
+    this.setFocusable(true);
     this.addKeyListener(this);
-    new Thread(new SendData()).start();
-    this.setFocusable(true); 
-  }
-
-  /*******************************
-   * begin coding of game methods*
-   *******************************/
-  
-  public void goGame(){
-    menu.setVisible(false);
-    this.remove(menu);
-    this.setLayout(new GridLayout(1,1));
-    this.add(window);
-    window.repaint();
-    move.start(); 
+    
+    
     
   }
   
-    //change to menu from info panel
+  /*******************************
+    * begin coding of game methods*
+    *******************************/
+  
+  public void goGame(){
+    this.add(window);
+    menu.setVisible(false);
+    this.remove(menu);
+    this.setLayout(new GridLayout(1,1));
+    
+    window.setVisible(false);
+    window.setVisible(true);
+    window.repaint();
+    window.setFocusable(true);
+    window.addKeyListener(this);
+    
+    move.start(); 
+    
+    
+  }
+  
+  //change to menu from info panel
   private void changeToMenu(){
     leftPanel.setVisible(false);
     rightPanel.setVisible(false);
@@ -152,16 +162,21 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
     this.remove(rightPanel);
     this.setLayout(new GridLayout(1,1));
     this.add(menu);  
- 
+    new Thread(new ConnectToServer()).start();
+  }
+  
+  public void reset(int p){
+    for(int a = 0; a<100; a++){
+      for(int b = 0; b<100; b++){
+        if(grid[b][a] == p){grid[b][a] = 0;} 
+      }
+    }
   }
   
   /**************************************************
     *begin coding event handlers for tronclient class*
     **************************************************/
-  public void valueChanged(ListSelectionEvent e){
-  System.out.println(e);
   
-  }
   
   
   public void mouseMoved(MouseEvent e){}
@@ -172,7 +187,6 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
   public void mouseClicked(MouseEvent e){
     changeToMenu();
     myName = name.getText();
-    host = address.getText();
     readyToConnect = true;  
   }
   public void keyTyped(KeyEvent e){}
@@ -195,12 +209,17 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
   public void actionPerformed(ActionEvent e){
     if(e.getSource()==soundLoop){new AePlayWave("media/daft_punk.wav").start();}
     else if(e.getSource()==move){
+      
+      
       if(direction.equals("u")){y--;}
       else if(direction.equals("d")){y++;}
       else if(direction.equals("r")){x++;}
       else{x--;}
+      
+      
       window.repaint();
-      me = new Point(x,y);
+      me.move(x, y);
+      
       
       if(x >= 99){x=1;}
       else if(x<=1){x=99;}
@@ -222,17 +241,39 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
         }catch(Exception ex){}
         System.out.println("hit");
         System.exit(0);
-      } 
+      }
       
-      
+      else{
+        try{
+          //send my current point to the server
+          ObjectOutputStream oos = new ObjectOutputStream(myS.getOutputStream());
+          oos.writeObject(me);
+          //read an array of points from the server
+          ObjectInputStream ois = new ObjectInputStream(myS.getInputStream());
+          Point[] p = (Point[])ois.readObject();
+          //if one of these points contains -5, player has died
+          for(int a = 0; a<4; a++){
+            if(p[a].x == -5){reset(a); p[a].x = 0; p[a].y = 0;} 
+          }
+          //set grid value so the players point can be drawn
+          grid[p[0].x][p[0].y] = 1;
+          grid[p[1].x][p[1].y] = 2;
+          grid[p[2].x][p[2].y] = 3;
+          grid[p[3].x][p[3].y] = 4;
+          
+        }
+        catch(Exception ex){System.out.println(ex);}
+        
+        
+      }
       
       
     }
   }
   
   /*****************************************
-    *begin coding of the game splash screen *
-    *****************************************/
+   *begin coding of the game splash screen *
+   *****************************************/
   
   public class GameMenu extends JPanel implements ActionListener{
     int t = 0;
@@ -288,8 +329,8 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
     **********************************/
   
   //thread used to search for servers that are broadcasting
-  public class SearchForGames extends SwingWorker<Void, Void> implements ListSelectionListener{
-    public Void doInBackground(){
+  public class SearchForGames implements Runnable, ListSelectionListener{
+    public void run(){
       try{
         byte[] b = new byte[1024];
         System.out.println(new String(b));
@@ -308,7 +349,7 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
           System.out.println(s);
           
           if(!availableGames.contains(s)){
-           availableGames.add(s); 
+            availableGames.add(s); 
           }
           String[][] g = new String[availableGames.size()][1];
           
@@ -323,62 +364,44 @@ class TronClient extends JFrame implements ActionListener, KeyListener, MouseLis
           
         } 
       }catch(Exception e){System.out.println(e);}
-      return null; 
+      
     }
     public void valueChanged(ListSelectionEvent e){
-    System.out.println(games.getValueAt(e.getFirstIndex(), 0));
-    
-    
-    }
-    
-    
+      host = (String)games.getValueAt(e.getFirstIndex(), 0);
+      
+      try{
+        
+        Socket dataS = new Socket();
+        dataS.connect(new InetSocketAddress(host, dataPort), timeOut);
+        
+        ObjectInputStream ois = new ObjectInputStream(dataS.getInputStream());
+        LinkedList<String> playersList = (LinkedList<String>)ois.readObject();
+        LinkedList<String> scoresList = (LinkedList<String>)ois.readObject();
+        ois.close();
+        
+        System.out.println(playersList.size());
+        
+        String[] cols = {"Player", "Score"};
+        String[][] ps = new String[playersList.size()][2];
+        
+        
+        for(int a = 0; a<playersList.size(); a++){
+          ps[a][0] = playersList.get(a);
+          ps[a][1] = scoresList.get(a);
+        }
+        
+        players = new JTable(ps, cols);
+        playersPane.getViewport().add(players);
+        
+        dataS.close();
+      }catch(Exception ex){System.out.println(ex);}
+    } 
   }
   
   
   //thread used to send data to the server
-  public class SendData extends SwingWorker<Void, Void>{
-    
-    //method to reset a dead players grid points to 0 so they wont be drawn
-    public void reset(int p){
-      for(int a = 0; a<100; a++){
-        for(int b = 0; b<100; b++){
-          if(grid[b][a] == p){grid[b][a] = 0;} 
-        }
-      }
-    }
-    
-    public Void doInBackground(){
-      
-      //connect
-      while(!connected){if(readyToConnect){connect();}}
- 
-      //start sending list of points
-      while(connected){
-        try{
-          //send my current point to the server
-          ObjectOutputStream oos = new ObjectOutputStream(myS.getOutputStream());
-          oos.writeObject(me);
-          //read an array of points from the server
-          ObjectInputStream ois = new ObjectInputStream(myS.getInputStream());
-          Point[] p = (Point[])ois.readObject();
-          //if one of these points contains -5, player has died
-          for(int a = 0; a<4; a++){
-            if(p[a].x == -5){reset(a); p[a].x = 0; p[a].y = 0;} 
-          }
-          //set grid value so the players point can be drawn
-          grid[p[0].x][p[0].y] = 1;
-          grid[p[1].x][p[1].y] = 2;
-          grid[p[2].x][p[2].y] = 3;
-          grid[p[3].x][p[3].y] = 4;
-          
-        }
-        catch(Exception e){System.out.println(e);}
-      }
-      
-      
-      
-      return null;
-    }
+  public class ConnectToServer implements Runnable{
+    public void run(){while(!connected){if(readyToConnect){connect();}}}
     
     public void connect(){
       try{
